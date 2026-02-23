@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLkart Track Designer</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #222; color: #fff; }
+        #canvas-container { position: relative; border: 2px solid #555; background: #111; margin-top: 20px; }
+        canvas { display: block; cursor: crosshair; }
+        .controls { margin: 20px; display: flex; gap: 10px; align-items: center; }
+        button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #444; cursor: not-allowed; }
+        .status { margin-bottom: 10px; font-style: italic; color: #aaa; }
+    </style>
+</head>
+<body>
+    <h1>RLkart Viewer</h1>
+    <div class="status" id="status">Cliquez pour ajouter des points de contrôle (3 minimum).</div>
+    <div id="error-msg" style="color: #ff4444; margin-bottom: 10px; font-weight: bold; min-height: 1.2em;"></div>
+    
+    <div id="canvas-container">
+        <canvas id="trackCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <div class="controls">
+        <button id="clearBtn">Tout effacer</button>
+        <button id="simulateBtn" disabled>Simuler la trajectoire</button>
+        <div>
+            Largeur de piste: <input type="number" id="trackWidth" value="4" min="1" max="10" style="width: 40px; padding: 5px;">
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

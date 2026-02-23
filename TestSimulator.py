@@ -121,8 +121,8 @@ class TestBenchmarkSimulator(BaseSimulator):
 
 if __name__ == "__main__":
     handler = RLModelHandler(
-        lambda: TestBenchmarkSimulator(
-            mode=p.GUI, fps=120, frame_gap_action=5
+        lambda: TestSimulator(
+            mode=p.GUI, fps=120, frame_gap_action=5, track_generator=TrackGenerator(origin=Track.Origin.ZERO, file_path="track/api_generated_track.npz"), cars_type=[RLCar]
         )
     )
-    handler.test(rl_model_filename="Models/ppo_car11")
+    handler.test(rl_model_filename="Models/ppo_car")
