@@ -1,0 +1,10 @@
+.idea
+__pycache__
+*.pyc
+*.pyo
+.venv
+Models
+track
+Note
+*.zip
+*.pkl

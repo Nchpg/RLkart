@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import math
+from enum import Enum
+
 import numpy as np
 
 
@@ -132,10 +135,64 @@ def get_left_right_track(centerline, width=4):
     # Shift the centerline along the normals by half the width to get the left and right boundary.
     left = centerline + normals * width / 2
     right = centerline - normals * width / 2
-    return left, right
+    return filter_left_right_track(centerline, left, right, width)
+
+
+def filter_left_right_track(centerline, left, right, width):
+    """
+    Adjust track boundaries.
+    If a boundary point is closer to any centerline point than width/2,
+    it is pushed away to the correct distance.
+    """
+    res = []
+    min_dist = width / 2
+    max_iters = 10
+
+    for points in [left, right]:
+        pts = np.copy(points)
+
+        # Iteratively push points away from the centerline if they are too close, until all points are at least width/2 away or we reach the maximum number of iterations.
+        for _ in range(max_iters):
+            for i in range(len(pts)):
+                diffs = pts[i] - centerline
+                dists = np.linalg.norm(diffs, axis=1)
+
+                idx_closest = np.argmin(dists)
+                d_min = dists[idx_closest]
+
+                if d_min < min_dist:
+                    direction = diffs[idx_closest] / (d_min + 1e-8)
+                    pts[i] = centerline[idx_closest] + direction * min_dist
+
+        # Remove points that are still too close to the centerline after the maximum number of iterations.
+        for i in range(len(pts)):
+            diffs = pts[i] - centerline
+            dists = np.linalg.norm(diffs, axis=1)
+            idx_closest = np.argmin(dists)
+            d_min = dists[idx_closest]
+            if d_min < min_dist:
+                np.delete(pts, i, axis=0)
+
+        # Remove points that are too far from each other (sometime points car be pushed too far and go to the other side of the track, creating very long segments crossing the track)
+        while True:
+            next_points = np.roll(pts, -1, axis=0)
+            diffs = next_points - pts
+            distances = np.linalg.norm(diffs, axis=1)
+            indices = np.where(distances >= width)[0]
+            if len(indices) == 0:
+                break
+            pts = np.delete(pts, indices, axis=0)
+
+        res.append(pts)
+
+    return res
 
 
 class Track:
+    class Origin(Enum):
+        ZERO = 0
+        RANDOM = 1
+
     def __new__(cls, *args, **kwargs):
         """
         Prevent direct instantiation of the clas
@@ -145,7 +202,12 @@ class Track:
         )
 
     def _initialize(
-        self, centerline: np.ndarray, left: np.ndarray, right: np.ndarray, width: int
+        self,
+        centerline: np.ndarray,
+        left: np.ndarray,
+        right: np.ndarray,
+        width: int,
+        origin: Origin,
     ):
         """
         Initialize the track attributes.
@@ -156,10 +218,36 @@ class Track:
         :param width: Width of the track.
         """
         self.centerline = centerline
+        if isinstance(origin, Track.Origin):
+            if origin == Track.Origin.RANDOM:
+                self.origin = np.random.randint(0, len(centerline))
+            elif origin == Track.Origin.ZERO:
+                self.origin = 0
+        else:
+            self.origin = origin
+        self.centerline_roll = np.roll(centerline, -self.origin, axis=0)
         self.left = left
         self.right = right
         self.nb_points = len(centerline)
         self.width = width
+        self.centerline_window_from_index = [
+            [
+                self.centerline_roll[(index + i) % self.nb_points]
+                for i in range(-5, 5 + 1)
+            ]
+            for index in range(self.nb_points)
+        ]
+
+        self.distance_from_origin = [0.0]
+        for i in range(self.nb_points):
+            j = (i + 1) % self.nb_points
+            self.distance_from_origin.append(
+                float(
+                    self.distance_from_origin[-1]
+                    + np.linalg.norm(self.centerline_roll[i] - self.centerline_roll[j])
+                )
+            )
+        self.total_distance = self.distance_from_origin[-1]
 
     @classmethod
     def load(cls, file_path: str) -> Track:
@@ -186,6 +274,7 @@ class Track:
         nb_control_points: int = 10,
         samples_per_segment: int = 20,
         tension: float = 0.5,
+        origin: Origin = Origin.ZERO,
     ) -> Track:
         """
         Generate a new Track instance
@@ -196,6 +285,7 @@ class Track:
         :param nb_control_points: Number of control points to generate
         :param samples_per_segment: Number of points to sample per segment between consecutive control points
         :param tension: Amount of tension to apply to the curve. Values between 0 and 1 increase the amount of tension
+        :param origin: Origin of the track. Can be either Track.Origin.ZERO or Track.Origin.RANDOM.
         :return: A new Track instance with generated centerline, left, and right boundaries
         """
         # Generate track
@@ -207,7 +297,7 @@ class Track:
 
         # Instantiate track
         self = object.__new__(cls)
-        self._initialize(centerline, left, right, width)
+        self._initialize(centerline, left, right, width, origin)
         return self
 
     def save_track(self, file_path: str):
@@ -222,4 +312,114 @@ class Track:
             left=self.left,
             right=self.right,
             width=self.width,
+            origin=self.origin,
+        )
+
+    def get_pos_and_direction_at(self, i):
+        """
+        Get the position and direction (angle) on the track at a given index.
+        :param i: Index along the track (can be a float)
+        """
+        i = round(i) % self.nb_points
+        j = (i + 1) % self.nb_points
+
+        x, y = self.centerline_roll[i]
+        tangent = self.centerline_roll[j] - self.centerline_roll[i]
+        theta = np.arctan2(tangent[1], tangent[0])
+        return x, y, theta
+
+    def get_direction_at(self, i):
+        """Get the direction (angle) on the track at a given index."""
+        return self.get_pos_and_direction_at(i % self.nb_points)[2]
+
+    def get_closest_centerline_point_idx_distance_on_track(self, x, y):
+        """
+        Get the closest point on the track centerline to a given (x, y) position, and the distance to it.
+        :param x: X coordinate of the point
+        :param y: Y coordinate of the point
+        :return: Tuple (closest_index, distance) where closest_index is the index of the closest point on the centerline (can be a float), and distance is the distance from (x, y) to that point.
+        """
+        p = np.array([x, y])
+
+        distances = np.linalg.norm(self.centerline_roll - p, axis=1)
+        idx = np.argmin(distances)
+
+        def project_on_segment(i):
+            p1 = self.centerline_roll[i % self.nb_points]
+            p2 = self.centerline_roll[(i + 1) % self.nb_points]
+
+            segment = p2 - p1
+            length_sq = np.dot(segment, segment)
+            if length_sq == 0:
+                return i, np.linalg.norm(p - p1)
+
+            t = np.dot(p - p1, segment) / length_sq
+            t = np.clip(t, 0.0, 1.0)
+
+            projection = p1 + t * segment
+            dist = np.linalg.norm(p - projection)
+
+            return i + t, dist
+
+        s1, d1 = project_on_segment(idx)
+        s2, d2 = project_on_segment(idx - 1)
+
+        if d1 < d2:
+            return s1, d1
+        else:
+            return s2, d2
+
+    def get_distance_on_track_from_origin(self, current_idx):
+        """
+        Get the distance along the track from the origin point to a given index.
+        :param current_idx: Index along the track (can be a float)
+        """
+        decimal, entier = math.modf(current_idx)
+        entier = int(entier)
+        s = self.distance_from_origin[entier]
+        if decimal > 0:
+            s += (
+                np.linalg.norm(
+                    self.centerline_roll[entier % self.nb_points]
+                    - self.centerline_roll[(entier + 1) % self.nb_points]
+                )
+                * decimal
+            )
+        return s
+
+
+class TrackGenerator:
+    """Class responsible for generating tracks for the simulator, either randomly or from a file."""
+
+    def __init__(
+        self,
+        width=4,
+        base_radius=20,
+        noise=10,
+        nb_control_points=10,
+        samples_per_segment=20,
+        tension=0.5,
+        origin=Track.Origin.ZERO,
+        file_path=None,
+    ):
+        self.width = width
+        self.base_radius = base_radius
+        self.noise = noise
+        self.nb_control_points = nb_control_points
+        self.samples_per_segment = samples_per_segment
+        self.tension = tension
+        self.origin = origin
+        self.file_path = file_path
+
+    def generate(self):
+        if self.file_path is not None:
+            return Track.load(self.file_path)
+        return Track.generate(
+            width=self.width,
+            base_radius=self.base_radius,
+            noise=self.noise,
+            nb_control_points=self.nb_control_points,
+            samples_per_segment=self.samples_per_segment,
+            tension=self.tension,
+            origin=self.origin,
         )
