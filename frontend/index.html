@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +17,7 @@
 </head>
 <body>
     <h1>RLkart Viewer</h1>
-    <div class="status" id="status">Cliquez pour ajouter des points de contrôle (3 minimum).</div>
+    <div class="status" id="status">Click to add control points (minimum 3).</div>
     <div id="error-msg" style="color: #ff4444; margin-bottom: 10px; font-weight: bold; min-height: 1.2em;"></div>
     
     <div id="canvas-container">
@@ -25,11 +25,9 @@
     </div>
 
     <div class="controls">
-        <button id="clearBtn">Tout effacer</button>
-        <button id="simulateBtn" disabled>Simuler la trajectoire</button>
-        <div>
-            Largeur de piste: <input type="number" id="trackWidth" value="4" min="1" max="10" style="width: 40px; padding: 5px;">
-        </div>
+        <button id="generateBtn">Generate Randomly</button>
+        <button id="clearBtn">Clear All</button>
+        <button id="simulateBtn" disabled>Simulate Trajectory</button>
     </div>
 
     <script src="script.js"></script>

@@ -6,9 +6,9 @@ import numpy as np
 import pybullet as p
 from gymnasium import spaces
 
-from Car import Car
-from GenTrack import TrackGenerator
-from GUI import GUI
+from rl.Car import Car
+from rl.GenTrack import TrackGenerator
+from rl.GUI import GUI
 
 
 class BaseSimulator(gym.Env):

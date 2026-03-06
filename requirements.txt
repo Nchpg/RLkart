@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+numpy
+pybullet
+pydantic
+stable-baselines3
+torch
+gymnasium

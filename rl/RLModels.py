@@ -4,7 +4,7 @@ from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
                                               VecNormalize,
                                               unwrap_vec_normalize)
 
-from Car import RLCar
+from rl.Car import RLCar
 
 
 class RLModelHandler:

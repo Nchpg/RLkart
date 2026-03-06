@@ -8,10 +8,10 @@ import numpy as np
 import pybullet as p
 import os
 
-from APISimulator import APISimulator
-from Car import RLCar
-from RLModels import RLModelHandler
-from GenTrack import TrackGenerator
+from backend.APISimulator import APISimulator
+from rl.Car import RLCar
+from rl.RLModels import RLModelHandler
+from rl.GenTrack import TrackGenerator
 
 app = FastAPI()
 
@@ -25,10 +25,10 @@ app.add_middleware(
 )
 
 # Load the model once at startup
-MODEL_PATH = "Models/ppo_car"
+MODEL_PATH = "models/ppo_car"
 
 def make_dummy_env():
-    from TestSimulator import TestSimulator
+    from rl.TestSimulator import TestSimulator
     # Use a real simulator in DIRECT mode for loading spaces
     return TestSimulator(cars_type=[RLCar], mode=p.DIRECT)
 
@@ -54,6 +54,13 @@ class ControlPoint(BaseModel):
 class SimulationRequest(BaseModel):
     control_points: List[ControlPoint]
     width: float = 4.0
+
+@app.get("/generate")
+async def generate_random_track():
+    from rl.GenTrack import generate_track_control_points
+    # Match the default parameters used in the project
+    pts = generate_track_control_points(nb_control_points=10, base_radius=20, noise=10)
+    return [{"x": float(p[0]), "y": float(p[1])} for p in pts]
 
 @app.post("/simulate")
 async def simulate(request: SimulationRequest):
@@ -84,9 +91,6 @@ async def simulate(request: SimulationRequest):
         except:
             pass
         raise HTTPException(status_code=500, detail=str(e))
-
-# Mount frontend files at the end
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

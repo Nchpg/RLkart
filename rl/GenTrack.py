@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from enum import Enum
+from random import random
 
 import numpy as np
 
@@ -95,8 +96,31 @@ def generate_track_control_points(
     # Generate evenly spaced angles between 0 and 2π
     angles = np.linspace(0, 2 * np.pi, nb_control_points, endpoint=False)
 
+    import random
+    if random.random() < 0.5:
+        angles = angles[::-1]  # Reverse the order of angles to create a track in the opposite direction
+        print("Track generated in counterclockwise direction")
+
+
+    u = np.random.uniform(-1, 1, nb_control_points)
+
+    # Accentue les extrêmes
+    gamma = 0.2  # < 1 => pousse vers ±1
+    signed = np.sign(u) * (np.abs(u) ** gamma)
+
+    r = base_radius + noise * signed
+
+    # Beta en forme de U (a < 1)
+    #a = 0.2  # plus petit -> plus extrême
+    #u = np.random.beta(a, a, nb_control_points)  # dans [0, 1]
+
+    # On transforme en [-1, 1]
+    #signed = 2 * u - 1
+
+    #r = base_radius + noise * signed
+
     # Generate a radius for each control point in the range [base_radius - noise, base_radius + noise]
-    r = base_radius + np.random.uniform(-noise, noise, nb_control_points)
+    #r = base_radius + np.random.uniform(-noise, noise, nb_control_points)
 
     # Convert polar coordinates(radius, angle) to Cartesian coordinates(x, y)
     return np.stack([r * np.cos(angles), r * np.sin(angles)], axis=1)
@@ -146,44 +170,22 @@ def filter_left_right_track(centerline, left, right, width):
     """
     res = []
     min_dist = width / 2
-    max_iters = 10
 
     for points in [left, right]:
         pts = np.copy(points)
 
-        # Iteratively push points away from the centerline if they are too close, until all points are at least width/2 away or we reach the maximum number of iterations.
-        for _ in range(max_iters):
-            for i in range(len(pts)):
-                diffs = pts[i] - centerline
-                dists = np.linalg.norm(diffs, axis=1)
-
-                idx_closest = np.argmin(dists)
-                d_min = dists[idx_closest]
-
-                if d_min < min_dist:
-                    direction = diffs[idx_closest] / (d_min + 1e-8)
-                    pts[i] = centerline[idx_closest] + direction * min_dist
-
         # Remove points that are still too close to the centerline after the maximum number of iterations.
+        r = []
         for i in range(len(pts)):
             diffs = pts[i] - centerline
             dists = np.linalg.norm(diffs, axis=1)
             idx_closest = np.argmin(dists)
             d_min = dists[idx_closest]
-            if d_min < min_dist:
-                np.delete(pts, i, axis=0)
+            if d_min >= min_dist * 0.95:
+                r.append(pts[i])
 
-        # Remove points that are too far from each other (sometime points car be pushed too far and go to the other side of the track, creating very long segments crossing the track)
-        while True:
-            next_points = np.roll(pts, -1, axis=0)
-            diffs = next_points - pts
-            distances = np.linalg.norm(diffs, axis=1)
-            indices = np.where(distances >= width)[0]
-            if len(indices) == 0:
-                break
-            pts = np.delete(pts, indices, axis=0)
 
-        res.append(pts)
+        res.append(np.array(r))
 
     return res
 

@@ -3,8 +3,8 @@ import math
 import numpy as np
 import pybullet as p
 
-from GenTrack import Track
-from GUI import GUI
+from rl.GenTrack import Track
+from rl.GUI import GUI
 
 
 class Car:
@@ -243,7 +243,7 @@ class Car:
                         self.dist_to_centerline,
                     ]
                 ),
-                np.array(look_aheads),
+                #np.array(look_aheads),
                 np.array(self.ray_fractions),
             ]
         ).astype(np.float64)

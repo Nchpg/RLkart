@@ -1,9 +1,9 @@
 import pybullet as p
 import numpy as np
-from BaseSimulator import BaseSimulator
-from Car import RLCar, Car
-from GenTrack import Track, generate_centerline, get_left_right_track, TrackGenerator
-from GUI import GUI
+from rl.BaseSimulator import BaseSimulator
+from rl.Car import RLCar, Car
+from rl.GenTrack import Track, generate_centerline, get_left_right_track, TrackGenerator
+from rl.GUI import GUI
 
 class CustomTrack(Track):
     """Custom Track class that allows manual initialization with given points."""
@@ -66,7 +66,7 @@ class APISimulator(BaseSimulator):
         car = self.cars[0]
         step_count = 0
         
-        while step_count < self.max_steps and car.on_track:
+        while step_count < self.max_steps and car.dist_to_centerline <= self.track.width / 2:
             # Check if car has an action method (RLCar has get_move)
             # BaseSimulator perform_action uses car.get_move(action=action)
             self.perform_action()
@@ -82,15 +82,6 @@ class APISimulator(BaseSimulator):
 
         print(f"Simulation completed: steps={step_count}, progress={car.progress:.2f}, on_track={car.on_track}")
                 
-        import os
-        if not os.path.exists("track"):
-            os.makedirs("track")
-        
-        try:
-            self.track.save_track("track/api_generated_track.npz")
-        except Exception as e:
-            print(f"Warning: Could not save track: {e}")
-
         return {
             "trajectory": self.trajectory,
             "track": {

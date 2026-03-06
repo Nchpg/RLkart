@@ -1,9 +1,9 @@
 import pybullet as p
 
-from BaseSimulator import BaseSimulator
-from Car import RLCar
-from GenTrack import Track, TrackGenerator
-from RLModels import RLModelHandler
+from rl.BaseSimulator import BaseSimulator
+from rl.Car import RLCar
+from rl.GenTrack import Track, TrackGenerator
+from rl.RLModels import RLModelHandler
 
 
 class TestSimulator(BaseSimulator):
@@ -57,7 +57,7 @@ class TestBenchmarkSimulator(BaseSimulator):
         :param nb_episodes: Number of episodes to run for benchmarking
         """
         BaseSimulator.__init__(
-            self, [RLCar], mode, fps, frame_gap_action, track_generator, wait=True
+            self, [RLCar], mode, fps, frame_gap_action, track_generator, wait=False
         )
 
         # benchmarking variables
@@ -121,8 +121,8 @@ class TestBenchmarkSimulator(BaseSimulator):
 
 if __name__ == "__main__":
     handler = RLModelHandler(
-        lambda: TestSimulator(
-            mode=p.GUI, fps=120, frame_gap_action=5, track_generator=TrackGenerator(origin=Track.Origin.ZERO, file_path="track/api_generated_track.npz"), cars_type=[RLCar]
+        lambda: TestBenchmarkSimulator(
+            mode=p.GUI, fps=120, frame_gap_action=5, track_generator=TrackGenerator(origin=Track.Origin.ZERO, nb_control_points=10)
         )
     )
-    handler.test(rl_model_filename="Models/ppo_car")
+    handler.test(rl_model_filename="models/ppo_car")

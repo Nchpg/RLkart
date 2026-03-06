@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pybullet as p
 
-from GenTrack import Track, filter_left_right_track
+from rl.GenTrack import Track, filter_left_right_track
 
 
 class GUI:

@@ -1,10 +1,10 @@
 import gymnasium as gym
 import pybullet as p
 
-from BaseSimulator import BaseSimulator
-from Car import RLCar
-from GenTrack import Track, TrackGenerator
-from RLModels import RLModelHandler
+from rl.BaseSimulator import BaseSimulator
+from rl.Car import RLCar
+from rl.GenTrack import Track, TrackGenerator
+from rl.RLModels import RLModelHandler
 
 
 class TrainSimulator(BaseSimulator):
@@ -79,5 +79,5 @@ class TrainSimulator(BaseSimulator):
 
 
 if __name__ == "__main__":
-    handler = RLModelHandler(lambda: TrainSimulator(mode=p.DIRECT))
-    handler.train("ppo_car12", n_envs=8)
+    handler = RLModelHandler(lambda: TrainSimulator(mode=p.DIRECT, track_generator=TrackGenerator(origin=Track.Origin.RANDOM, nb_control_points=10)))
+    handler.train("ppo_car30", n_envs=8)
