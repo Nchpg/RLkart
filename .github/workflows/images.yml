@@ -1,0 +1,58 @@
+name: images
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    # Les deux images sont indépendantes : elles se construisent en parallèle,
+    # chacune avec son propre cache. Le `context` reste la racine du dépôt pour
+    # les deux, comme dans docker-compose.yml — le Dockerfile du backend copie
+    # `rl/` et `models/`, qui sont en dehors de son dossier.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: frontend
+            dockerfile: frontend/Dockerfile
+          - name: backend
+            dockerfile: backend/Dockerfile
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ghcr.io/nchpg/rlkart-${{ matrix.name }}:main
+          # `scope` par image : sans lui, les deux constructions se disputent la
+          # même entrée de cache et l'invalident mutuellement à chaque passage.
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+      # La référence COMPLÈTE, prête à coller dans profiles/server/default.nix.
+      # Dans le résumé du run plutôt que dans le journal : c'est la seule valeur
+      # qu'on vient chercher après une publication, elle ne doit pas être à
+      # dérouler au milieu de mille lignes de build.
+      - name: digest
+        run: |
+          echo '`ghcr.io/nchpg/rlkart-${{ matrix.name }}@${{ steps.push.outputs.digest }}`' >> "$GITHUB_STEP_SUMMARY"

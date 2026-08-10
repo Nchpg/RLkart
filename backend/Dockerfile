@@ -11,7 +11,15 @@ WORKDIR /app
 
 # Copy requirements and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# torch is installed FIRST, from PyTorch's CPU-only index.
+#
+# The default wheel on PyPI is the CUDA build: it drags in the whole NVIDIA
+# runtime and turns this image into several gigabytes — on a host with no GPU,
+# where PPO inference runs on the CPU anyway. Installing it first means the
+# `-r requirements.txt` below finds torch already satisfied and leaves it alone.
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch \
+ && pip install --no-cache-dir -r requirements.txt
 
 # Copy all project files
 COPY ./backend ./backend
