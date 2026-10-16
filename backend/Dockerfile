@@ -29,6 +29,10 @@ COPY ./backend ./backend
 COPY ./rl ./rl
 COPY ./models ./models
 
+# Unprivileged user: the server only reads the code and the models.
+RUN useradd --uid 1000 --create-home app
+USER app
+
 # Expose port 8000
 EXPOSE 8000
 
