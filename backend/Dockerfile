@@ -18,7 +18,10 @@ COPY requirements.txt .
 # runtime and turns this image into several gigabytes — on a host with no GPU,
 # where PPO inference runs on the CPU anyway. Installing it first means the
 # `-r requirements.txt` below finds torch already satisfied and leaves it alone.
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch \
+# PyPI stays as an extra index for torch's own dependencies, which the CPU index
+# no longer carries in full; `+cpu` still wins, as the higher version.
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
+      --extra-index-url https://pypi.org/simple torch \
  && pip install --no-cache-dir -r requirements.txt
 
 # Copy all project files
